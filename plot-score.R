@@ -65,10 +65,11 @@ par_line <- course_games$par %>% only()
 gp <- ggplot(data = course_games) +
   aes(x = game_id, y = strokes) +
   geom_col(colour = "white", fill = "black") +
-  geom_hline(yintercept = par_line, linetype = "dashed", colour = "red", alpha = 1/2)
+  geom_hline(yintercept = par_line, linetype = "dashed", colour = "red", alpha = 1/2) +
+  coord_cartesian(ylim = c(min(course_games$strokes) - 1, NA))
 
 graphics.off()
-sbf_open_window(10, 4)
+sbf_open_window(6, 2)
 sbf_print(gp)
 
 
