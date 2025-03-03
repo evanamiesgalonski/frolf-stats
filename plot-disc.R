@@ -1,21 +1,33 @@
 source("header.R")
 
+turn_activation <- 3
+fade_offset <- 0.2
+
+extra_cols <- poispalette:::pois_cols()[2:9]
+
 disc <- tribble(
-  ~disc, ~speed, ~glide, ~turn, ~fade, ~have,
-  "stalker", 7, 5, -1, 2, T, 
-  "undertaker", 9, 5, -1, 2, T,
-  "sting", 7, 5, -2, 1, T,
-  "explorer", 7, 7, 0, 2, T,
-  "buzz os", 5, 5, 0, 3, T,
-  "pathfinder", 5, 5, 0, 1, T,
-  "nebula", 5, 4, -0.5, 2, T,
-  "tempo", 4, 4, 0, 2.5, T,
-  "swarm", 5, 3, 0, 4, T
+  ~disc, ~speed, ~glide, ~turn, ~fade, ~have, ~colour,
+  "stalker", 7, 5, -1, 2, T, "#0078FF",
+  "undertaker", 9, 5, -1, 2, T, "#9CEDFF",
+  "sting", 7, 5, -2, 1, T, "#7713FF",
+  "explorer", 7, 7, 0, 2, T, "#DBFF00",
+  "buzz os", 5, 5, 0, 3, T, "#FF009E",
+  "pathfinder", 5, 5, 0, 1, T, "#FF3D20",
+  "nebula", 5, 4, -0.5, 2, T, "#FFB319",
+  "tempo", 4, 4, 0, 2.5, T, "#FFD3C1",
+  "swarm", 5, 3, 0, 4, T, "#FF9CF3",
+  "as", 5, 5, 0, 6, F, NA
 ) %>%
-  mutate(inc_origin = 0, inc_turn = 2, inc_fade = 1) %>%
+  mutate(
+    origin = 0, mid = turn_activation, end = 1,
+    col_group = is.na(colour)
+    ) %>%
+  group_by(col_group) %>%
+  mutate(colour = if_else(is.na(colour), extra_cols[row_number()], colour)) %>%
+  ungroup() %>%
   pivot_longer(
-    c(inc_origin, inc_turn, inc_fade), 
-    names_to = NULL, values_to = "y_increment", names_prefix = "disc"
+    c(origin, mid, end), 
+    names_to = "inc_type", values_to = "y_increment", names_prefix = "disc"
     ) %>%
   mutate(
     y_increment = if_else(y_increment == 0, 0, y_increment * speed)
@@ -24,31 +36,51 @@ disc <- tribble(
   mutate(
     y = cumsum(y_increment),
     x = case_when(
-      row_number() == 1 ~ 0,
-      row_number() == 2 ~ turn,
-      row_number() == 3 ~ fade,
+      inc_type == "origin" ~ 0,
+      inc_type == "mid" ~ turn + (fade * fade_offset),
+      inc_type == "end" ~ fade + turn,
       )
     ) %>%
-  select(-y_increment) %>%
+  select(-y_increment, -col_group) %>%
   ungroup()
 
-disc %<>%
-  filter(speed >= 7)
+colors <- disc %>% arrange(disc) %>% pull(colour) %>% unique()
+
+splinate <- function(x, y, n = 100, method = "natural")
+{
+  t <- seq_along(x)
+  new_t <- seq(min(t), max(t), length.out = n)
+  new_x <- spline(t, x, xout = new_t, method = method)$y
+  new_y <- spline(t, y, xout = new_t, method = method)$y
+  data.frame(t = new_t, x = new_x, y = new_y)
+}
+
+disc_splines <- map_dfr(unique(disc$disc), function(disc_name) {
+
+  disc_dat <- disc %>% filter(disc == disc_name)
+  
+  splines <- splinate(disc_dat$x, disc_dat$y)
+  
+  disc_dat %>% slice(1) %>% select(-c(x, y, inc_type)) %>%
+    cbind(splines)
+})
+
 
 # plotting of 0, 1, 2 on y, by 0, turn, fade on x  
 # increment for y is expanded by speed of disc.
-gp <- ggplot(data = disc) +
+gp <- ggplot(data = disc_splines) +
   aes(x = x, y = y, colour = disc) +
-  geom_path() +
-  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey", alpha = 0.5) +
+  geom_path(linewidth = 2, lineend = "round") +
+  # geom_smooth(orientation = "y", level = .9) +
+  geom_vline(xintercept = 0, linetype = "dotted", colour = "grey", alpha = 0.1, linewidth = 2) +
   expand_limits(x = c(-5, 5)) +
-  scale_colour_disc_poisson(order = c(2:9)) +
-  ggdark::dark_theme_classic()
-  
+  labs(x = "turn/position", y = "distance") +
+  scale_x_continuous(breaks = c(-3:0)) +
+  scale_colour_manual(values = colors) +
+  ggdark::dark_theme_classic() +
+  # scale_x_reverse(breaks = c(-3:0)) +
+  NULL
+
 graphics.off()
-sbf_open_window(10, 10)
+sbf_open_window(12, 14)
 sbf_print(gp)
-
-
-
-  
