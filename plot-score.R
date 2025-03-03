@@ -45,15 +45,17 @@ score <- sc %>%
 # start / end, score, rating
 # maybe add the total strokes scored and to par for the course?
 game <- score %>%
+  filter(strokes != 0) %>%
   group_by(course_name, layout_name, date_time_start, date_time_end, round_rating) %>%
   summarise(
+    holes = n(),
     strokes = sum(strokes),
     par = sum(par),
     score = sum(score), 
     .groups = "drop") %>%
   arrange(date_time_start) %>%
   mutate(game_id = row_number())
- 
+
 
 course_games <- game %>% filter(course_name == "Southern Discomfort")
 par_line <- course_games$par %>% only()
@@ -66,16 +68,108 @@ gp <- ggplot(data = course_games) +
   aes(x = game_id, y = strokes) +
   geom_col(colour = "white", fill = "black") +
   geom_hline(yintercept = par_line, linetype = "dashed", colour = "red", alpha = 1/2) +
-  coord_cartesian(ylim = c(min(course_games$strokes) - 1, NA))
+  coord_cartesian(ylim = c(min(course_games$strokes) -5, NA)) +
+  dark_theme_gray()
 
 graphics.off()
 sbf_open_window(6, 2)
 sbf_print(gp)
 
 
-  
+gp <- ggplot(data = course_games) +
+  aes(x = score) +
+  geom_histogram(binwidth = 1, colour = "black") +
+  dark_theme_gray() +
+  scale_y_continuous(breaks = 1:12) + 
+  geom_vline(xintercept = mean(course_games$score), colour = "red") +
+  # scale_x_binned(breaks = -1:-13) +
+  NULL
+
+graphics.off()
+sbf_open_window()
+sbf_print(gp)
+
+
+hole_score <- score %>%
+  filter(course_name == "Southern Discomfort") %>%
+  select(date_time_start, hole, score) %>%
+  mutate(score = factor(score), hole = factor(hole)) %>%
+  pivot_wider(names_from = hole, values_from = score) %>%
+  select(-date_time_start)
+
+
+course_score <- score %>%
+  filter(course_name == "Southern Discomfort") %>%
+  group_by(hole) %>%
+  mutate(hole_mean = mean(score), hole = as.integer(hole))
+
+gp <- ggplot(data = course_score) +
+  aes(x = hole, y = hole_mean) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "blue") +
+  dark_theme_gray() +
+  scale_x_continuous(breaks = 1:18)
+
+sbf_open_window(7, 3)
+sbf_print(gp)
+
+
+gp <- ggplot(data = course_score) +
+  # facet_wrap(~ hole) +
+  geom_col(aes(x = hole, y = score, colour = score, fill = score))+
+  scale_colour_grad_poisson() +
+  scale_fill_grad_poisson() +
+  scale_x_continuous(breaks = 1:18) +
+  dark_theme_gray()
+
+graphics.off()
+sbf_open_window(6)
+sbf_print(gp)
+
+
+
+# above but colour by game continuous
+
+
 # more plots of score by hole? x = date, y = score, 
 # show floating bar par centered at score with 
 # birdies stacking below and bogies above
 
 # plot rating by date?
+
+# rating/score relationship
+
+rating <- game %>% filter(!is.na(round_rating)) %>%
+  mutate(course_layout = paste(course_name, layout_name, sep = "-")) %>%
+  filter(
+    course_name %in% c(
+      "Marsh Creek", "Art Gibbon Park", "Ymir Whirl Disc Golf Course",
+      "All Yew Need Disc Golf Course"
+      )
+    ) %>%
+  mutate(
+    ten_floor = floor(round_rating / 10),
+    ten_floor = ten_floor * 10,
+         )
+
+# proportion of rounds above x rating
+rating %<>% mutate(ten_floor = if_else(ten_floor < 160, NA_real_, ten_floor))
+sum(!is.na(rating$ten_floor)) / nrow(rating)
+
+dat <- data.frame(line = c(160, 170, 180, 190, 200))
+
+gp <- ggplot(rating) +
+  aes(x = score, y = round_rating) +
+  facet_wrap(~ course_layout) +
+  geom_point(alpha = 0.5, size = 4, aes(colour = ten_floor)) +
+  dark_theme_gray() +
+  geom_hline(data = dat, aes(yintercept = line, colour = line), alpha = 0.75, linetype = "dashed") +
+  scale_colour_viridis() +
+  scale_x_reverse(breaks = c(min(rating$score):max(rating$score))) +
+  scale_y_continuous(breaks = c(10:22) * 10) + 
+  labs(x = "Score", y = "Rating", colour = "rating") 
+
+graphics.off()
+sbf_open_window(10, 8)
+sbf_print(gp)
+
