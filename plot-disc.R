@@ -1,7 +1,12 @@
 source("header.R")
 
-turn_activation <- 3
-fade_offset <- 0.2
+turn_activation <- 4
+
+fade_offset <- 0.1
+
+# need a param that effects end point, inhibits turn,
+# but does not pull mid point away from turn
+# just add one elbow thats like pre turn thats straiter
 
 extra_cols <- poispalette:::pois_cols()[2:9]
 
@@ -16,7 +21,13 @@ disc <- tribble(
   "nebula", 5, 4, -0.5, 2, T, "#FFB319",
   "tempo", 4, 4, 0, 2.5, T, "#FFD3C1",
   "swarm", 5, 3, 0, 4, T, "#FF9CF3",
-  "as", 5, 5, 0, 6, F, NA
+  "trail", 10, 5, -1, 1, F, NA,
+  "inertia", 9, 5, -2, 2, F, NA,
+  "beast", 10, 5, -2, 2, F, NA,
+  "sapphire", 10, 6, -2, 1.5, F, NA,
+  "gorgon", 10, 6, -3, 2, F, NA,
+  "mantis", 8, 4, -3, 3, F, NA,
+  "mantra", 9, 6, -2, 1, F, NA
 ) %>%
   mutate(
     origin = 0, mid = turn_activation, end = 1,
@@ -30,21 +41,19 @@ disc <- tribble(
     names_to = "inc_type", values_to = "y_increment", names_prefix = "disc"
     ) %>%
   mutate(
-    y_increment = if_else(y_increment == 0, 0, y_increment * speed)
+    y_increment = if_else(y_increment == 0, 0, (y_increment * speed) + (glide * speed / 30))
     ) %>%
   group_by(disc) %>%
   mutate(
     y = cumsum(y_increment),
     x = case_when(
       inc_type == "origin" ~ 0,
-      inc_type == "mid" ~ turn + (fade * fade_offset),
+      inc_type == "mid" ~ turn +(fade * fade_offset),
       inc_type == "end" ~ fade + turn,
       )
     ) %>%
   select(-y_increment, -col_group) %>%
   ungroup()
-
-colors <- disc %>% arrange(disc) %>% pull(colour) %>% unique()
 
 splinate <- function(x, y, n = 100, method = "natural")
 {
@@ -66,13 +75,16 @@ disc_splines <- map_dfr(unique(disc$disc), function(disc_name) {
 })
 
 
+disc_splines %<>% filter(speed >= 7)
+colors <- disc_splines %>% arrange(disc) %>% pull(colour) %>% unique()
+
 # plotting of 0, 1, 2 on y, by 0, turn, fade on x  
 # increment for y is expanded by speed of disc.
 gp <- ggplot(data = disc_splines) +
   aes(x = x, y = y, colour = disc) +
-  geom_path(linewidth = 2, lineend = "round") +
+  geom_path(linewidth = 2, lineend = "round", alpha = 2/3) +
   # geom_smooth(orientation = "y", level = .9) +
-  geom_vline(xintercept = 0, linetype = "dotted", colour = "grey", alpha = 0.1, linewidth = 2) +
+  geom_vline(xintercept = 0, linetype = "dotted", colour = "grey", alpha = 0.3, linewidth = 2) +
   expand_limits(x = c(-5, 5)) +
   labs(x = "turn/position", y = "distance") +
   scale_x_continuous(breaks = c(-3:0)) +
@@ -82,5 +94,5 @@ gp <- ggplot(data = disc_splines) +
   NULL
 
 graphics.off()
-sbf_open_window(12, 14)
+sbf_open_window(8)
 sbf_print(gp)
