@@ -173,3 +173,31 @@ graphics.off()
 sbf_open_window(10, 8)
 sbf_print(gp)
 
+
+# rating
+
+
+rating <- sc %>%
+  filter(
+    player_name == "Lesaucier",
+    !is.na(round_rating)
+    ) %>%
+  group_by(start_date, course_name, layout_name) %>%
+  summarise(rating = only(round_rating), .groups = "drop") %>%
+  mutate(
+    start_date = dtt_date_time(start_date),
+    pdga_apprx = (rating * 2) + 500,
+    main_course = if_else(
+      course_name %in% c(
+        "Art Gibbon Park", "Marsh Creek", "All Yew Need Disc Golf Course",
+        "Ymir Whirl Disc Golf Course"
+        ), TRUE, FALSE
+      )
+    ) %>%
+  arrange(start_date) %>%
+  mutate(
+    months_exp = floor(dtt_diff(start_date, first(start_date), units = "days") / 30),
+    seq = row_number()
+    ) %>%
+  group_by(course_name) %>%
+  mutate(seq_course = row_number())
