@@ -21,12 +21,11 @@ disc <- tribble(
   "nebula", 5, 4, -0.5, 2, T, "#FFB319",
   "tempo", 4, 4, 0, 2.5, T, "#FFD3C1",
   "swarm", 5, 3, 0, 4, T, "#FF9CF3",
-  "trail", 10, 5, -1, 1, F, NA,
-  "inertia", 9, 5, -2, 2, F, NA,
-  "beast", 10, 5, -2, 2, F, NA,
+  "Trail", 10, 5, -1, 1, F, NA,
+  "Trance", 8, 5, -2, 1, F, NA,
+  "Virus", 9, 5, -3.5, 1, F, NA,
+  "Insanity/Lift", 9, 5, -2, 1.5, F, NA,
   "sapphire", 10, 6, -2, 1.5, F, NA,
-  "gorgon", 10, 6, -3, 2, F, NA,
-  "mantis", 8, 4, -3, 3, F, NA,
   "mantra", 9, 6, -2, 1, F, NA
 ) %>%
   mutate(
@@ -75,7 +74,7 @@ disc_splines <- map_dfr(unique(disc$disc), function(disc_name) {
 })
 
 
-disc_splines %<>% filter(speed >= 7)
+# disc_splines %<>% filter(speed >= 7)
 colors <- disc_splines %>% arrange(disc) %>% pull(colour) %>% unique()
 
 # plotting of 0, 1, 2 on y, by 0, turn, fade on x  
@@ -96,3 +95,4 @@ gp <- ggplot(data = disc_splines) +
 graphics.off()
 sbf_open_window(8)
 sbf_print(gp)
+
