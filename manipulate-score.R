@@ -77,7 +77,7 @@ score_chk <- score %>%
 # quick summary for game stats
 # start / end, score, rating
 # maybe add the total strokes scored and to par for the course?
-game <- score %>%
+game_9s <- score %>%
   filter(strokes != 0) %>%
   mutate(
     nine = if_else(hole <= 9 , "1front", "2back"),
@@ -87,12 +87,27 @@ game <- score %>%
     holes = n(),
     strokes = sum(strokes),
     par = sum(par),
+    score = sum(score),
+    .groups = "drop") %>%
+  arrange(date_time_start) %>%
+  mutate(`9_id` = row_number())
+
+# SOMETHING MAJORLY WRONG WITH COURSE GROUPING
+# SEE PLOT  3IN PLOT SCORE MAIN 
+
+game <- game_9s %>%
+  group_by(course_name, layout_name, date_time_start, date_time_end, round_rating) %>%
+  summarise(
+    holes = n(),
+    strokes = sum(strokes),
+    par = sum(par),
     score = sum(score), 
     .groups = "drop") %>%
   arrange(date_time_start) %>%
   mutate(game_id = row_number())
 
-sbf_set_sub("score", rm = TRUE)
+rm(score_chk)
+sbf_set_sub("score", rm = TRUE, ask = FALSE)
 sbf_save_datas()
   
 
